@@ -329,16 +329,29 @@ static int __rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 	long now, scheduled;
 	int err;
 
+//Fangfang.Hui@Prd.PlatSrv.OTA, 2014/01/15, add for clear alarm register, transplanted from find7 author yuyi
+	struct rtc_time rtc_tm;
+
+	memset(&rtc_tm, 0, sizeof(rtc_tm));// mwalker
+
 	err = rtc_valid_tm(&alarm->time);
-	if (err)
+
+	/* Open a door to clear alarm register by mwalker. */
+	if (err != 0 && memcmp(&alarm->time, &rtc_tm, sizeof(rtc_tm))){
+		dev_err(&rtc->dev, "invalide alarm time\n");
 		return err;
+	}
+
 	rtc_tm_to_time(&alarm->time, &scheduled);
 
 	/* Make sure we're not setting alarms in the past */
 	err = __rtc_read_time(rtc, &tm);
 	rtc_tm_to_time(&tm, &now);
-	if (scheduled <= now)
+
+	if (scheduled <= now && memcmp(&alarm->time, &rtc_tm, sizeof(rtc_tm))){
+		dev_warn(&rtc->dev, "%s : try to set alarm in the past\n", __func__);
 		return -ETIME;
+	}
 	/*
 	 * XXX - We just checked to make sure the alarm time is not
 	 * in the past, but there is still a race window where if
@@ -360,6 +373,17 @@ int rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 {
 	int err;
 
+//Fangfang.Hui@Prd.PlatSrv.OTA, 2014/01/15, modify for clear alarm register, transplanted from find7 author yuyi
+	struct rtc_time rtc_tm;
+
+	memset(&rtc_tm, 0, sizeof(rtc_tm));// mwalker
+
+	/* Open a door to clear alarm register by mwalker. */
+	if(!memcmp(&alarm->time, &rtc_tm, sizeof(rtc_tm))){
+		err = __rtc_set_alarm(rtc, alarm);
+		return err;
+	}
+	
 	err = rtc_valid_tm(&alarm->time);
 	if (err != 0)
 		return err;

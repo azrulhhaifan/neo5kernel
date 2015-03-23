@@ -381,6 +381,13 @@ mem_remove:
 				pr_info("Node %s removed memory %x-%x\n", uname,
 				memory_start, memory_start+memory_size);
 		}
+		ret = memblock_remove(0x07f00000, 0x100000);
+		if (ret)
+			WARN(1, "Failed to remove memory %x-%x\n",
+			0x07f00000, 0x07f00000+0x100000);
+		else
+			pr_info("Node %s removed memory %x-%x\n", uname,
+			0x07f00000, 0x07f00000+0x100000);
 	}
 
 mem_reserve:

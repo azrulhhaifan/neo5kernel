@@ -29,6 +29,10 @@
 
 static unsigned char *mdss_dsi_base;
 
+//zhanhua.li@Prd.Lcd,2014-04-08,fix lcd does not power off in ftm mode 
+#include <mach/oppo_boot_mode.h>
+#include <mach/oppo_project.h>
+
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -1355,6 +1359,10 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		ctrl_pdata->ctrl_state |=
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {
+		//zhanhua.li@Prd.Lcd,2014-04-08,fix lcd does not power off in ftm mode 
+		if (MSM_BOOT_MODE__FACTORY == get_boot_mode() && is_project(OPPO_14027)) {
+			rc = mdss_dsi_panel_power_on(&(ctrl_pdata->panel_data), 0);
+		}
 		pinfo->panel_power_on = 0;
 	}
 

@@ -64,3 +64,6 @@ obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
 obj-$(CONFIG_LTC4088_CHARGER)	+= ltc4088-charger.o
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
+obj-$(CONFIG_OPPO_SMB358)	+= smb358-charger.o
+# Fanhong.Kong@ProDrv.CHG,add 2014.4.1 for battery encryption
+obj-$(CONFIG_OPPO_SMB358)	+= bq2202a.o

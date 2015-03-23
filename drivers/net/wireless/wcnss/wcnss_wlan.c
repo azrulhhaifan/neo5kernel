@@ -35,6 +35,7 @@
 #include <linux/rwsem.h>
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/qpnp/qpnp-adc.h>
+#include <mach/oppo_boot_mode.h>
 
 #include <mach/msm_smd.h>
 #include <mach/msm_iomap.h>
@@ -43,6 +44,8 @@
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 #include "wcnss_prealloc.h"
 #endif
+#include <mach/device_info.h>
+
 
 #define DEVICE "wcnss_wlan"
 #define VERSION "1.01"
@@ -177,6 +180,8 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define	WCNSS_BUILD_VER_REQ           (WCNSS_CTRL_MSG_START + 9)
 #define	WCNSS_BUILD_VER_RSP           (WCNSS_CTRL_MSG_START + 10)
 
+//Yadong.Hu@Prd.Svc.Wifi, 2014/05/09, Add for can not enable wifi because WCNSS load failed
+#define WCNSS_MAX_PIL_RETRY         3  
 
 #define VALID_VERSION(version) \
 	((strncmp(version, "INVALID", WCNSS_VERSION_LEN)) ? 1 : 0)
@@ -262,6 +267,13 @@ struct nvbin_dnld_req_params {
 	 * uint8[nvbin_buffer_size].
 	 */
 };
+
+/*OPPO qiulei 2013-10-24 add begin for wifi_devinfo*/
+struct manufacture_info wcn_info = {
+	.version = "wcn3620",
+	.manufacture = "Qualcomm",
+};
+/*OPPO qiulei 2013-10-24 add end for wifi_devinfo*/
 
 
 struct nvbin_dnld_req_msg {
@@ -1930,6 +1942,8 @@ wcnss_trigger_config(struct platform_device *pdev)
 	unsigned long wcnss_phys_addr;
 	int size = 0;
 	struct resource *res;
+	//Yadong.Hu@Prd.Svc.Wifi, 2014/05/09, Add for can not enable wifi because WCNSS load failed
+	int pil_retry = 0;    
 	int has_pronto_hw = of_property_read_bool(pdev->dev.of_node,
 									"qcom,has-pronto-hw");
 
@@ -2121,7 +2135,15 @@ wcnss_trigger_config(struct platform_device *pdev)
 		penv->fw_vbatt_state = WCNSS_CONFIG_UNSPECIFIED;
 	}
 
+	/* OPPO 2014-04-11 liuhd Add begin for wifi crash when into ftm */
+	if(get_boot_mode() == MSM_BOOT_MODE__FACTORY)
+		msleep(2000);
+	/* OPPO 2014-04-11 liuhd Add end */
+
 	/* trigger initialization of the WCNSS */
+	#ifndef VENDOR_EDIT
+	//Yadong.Hu@Prd.Svc.Wifi, 2014/05/09, Modify for can not enable wifi because WCNSS load failed
+	/*
 	penv->pil = subsystem_get(WCNSS_PIL_DEVICE);
 	if (IS_ERR(penv->pil)) {
 		dev_err(&pdev->dev, "Peripheral Loader failed on WCNSS.\n");
@@ -2130,6 +2152,22 @@ wcnss_trigger_config(struct platform_device *pdev)
 		penv->pil = NULL;
 		goto fail_pil;
 	}
+	*/
+	#else /* VENDOR_EDIT */
+	do {
+	penv->pil = subsystem_get(WCNSS_PIL_DEVICE);
+	if (IS_ERR(penv->pil)) {
+		dev_err(&pdev->dev, "Peripheral Loader failed on WCNSS.\n");
+		ret = PTR_ERR(penv->pil);
+		wcnss_pronto_log_debug_regs();
+		}
+	} while (pil_retry++ < WCNSS_MAX_PIL_RETRY && IS_ERR(penv->pil));
+
+	if (pil_retry >= WCNSS_MAX_PIL_RETRY) {
+		penv->pil = NULL;
+		goto fail_pil;
+	}
+	#endif /* VENDOR_EDIT */
 
 	return 0;
 
@@ -2335,6 +2373,10 @@ wcnss_wlan_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	penv->pdev = pdev;
+
+	/*OPPO qiulei 2013-10-24 add begin for wifi_devinfo*/
+	register_device_proc("wcn", wcn_info.version, wcn_info.manufacture);
+   /*OPPO qiulei 2013-10-24 add end for wifi_devinfo*/
 
 	/* register sysfs entries */
 	ret = wcnss_create_sysfs(&pdev->dev);

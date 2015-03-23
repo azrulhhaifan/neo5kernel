@@ -428,8 +428,11 @@ static int wait_for_err_ready(struct subsys_device *subsys)
 	if (!subsys->desc->err_ready_irq || enable_debug == 1)
 		return 0;
 
+	/* OPPO 2014-04-11 liuhd Add begin for wifi crash when into ftm */
 	ret = wait_for_completion_timeout(&subsys->err_ready,
-					  msecs_to_jiffies(10000));
+					  msecs_to_jiffies(50000));
+	/* OPPO 2014-04-11 liuhd Add end */
+
 	if (!ret) {
 		pr_err("[%s]: Error ready timed out\n", subsys->desc->name);
 		return -ETIMEDOUT;
